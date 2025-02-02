@@ -1,14 +1,8 @@
 import { create } from 'zustand';
 import * as api from '../api/boardApi';
 
-const initialSections = [
-  { id: '1', title: 'Todo', tasks: [] },
-  { id: '2', title: 'In Progress', tasks: [] },
-  { id: '3', title: 'Done', tasks: [] },
-];
-
 export const useBoardStore = create((set, get) => ({
-  sections: initialSections,
+  sections: [],
   searchQuery: '',
   isLoading: false,
   error: null,
@@ -16,37 +10,88 @@ export const useBoardStore = create((set, get) => ({
   initializeBoard: async () => {
     set({ isLoading: true });
     try {
-      const tasks = await api.fetchTasks();
-      const sections = get().sections.map(section => ({
+      const { sections, tasks } = await api.fetchBoard();
+      const sectionsWithTasks = sections.map(section => ({
         ...section,
         tasks: tasks
           .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
           .sort((a, b) => a.order - b.order)
       }));
-      set({ sections, isLoading: false, error: null });
+      set({ 
+        sections: sectionsWithTasks.sort((a, b) => a.order - b.order),
+        isLoading: false,
+        error: null 
+      });
     } catch (error) {
       set({ error: error.message, isLoading: false });
-      console.error('Error fetching tasks:', error);
+      console.error('Error fetching board:', error);
     }
   },
 
-  addSection: (title) => set((state) => ({
-    sections: [...state.sections, {
-      id: crypto.randomUUID(),
-      title,
-      tasks: [],
-    }],
-  })),
+  addSection: async (title) => {
+    try {
+      const newSection = {
+        id: crypto.randomUUID(),
+        title,
+      };
 
-  updateSection: (sectionId, title) => set((state) => ({
-    sections: state.sections.map((section) => 
-      section.id === sectionId ? { ...section, title } : section
-    ),
-  })),
+      const { sections, tasks } = await api.createSection(newSection);
+      const sectionsWithTasks = sections.map(section => ({
+        ...section,
+        tasks: tasks
+          .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+          .sort((a, b) => a.order - b.order)
+      }));
+      
+      set({ 
+        sections: sectionsWithTasks.sort((a, b) => a.order - b.order),
+        error: null
+      });
+    } catch (error) {
+      set({ error: error.message });
+      console.error('Error adding section:', error);
+    }
+  },
 
-  deleteSection: (sectionId) => set((state) => ({
-    sections: state.sections.filter((section) => section.id !== sectionId),
-  })),
+  updateSection: async (sectionId, title) => {
+    try {
+      const { sections, tasks } = await api.updateSection(sectionId, { title });
+      const sectionsWithTasks = sections.map(section => ({
+        ...section,
+        tasks: tasks
+          .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+          .sort((a, b) => a.order - b.order)
+      }));
+      
+      set({ 
+        sections: sectionsWithTasks.sort((a, b) => a.order - b.order),
+        error: null
+      });
+    } catch (error) {
+      set({ error: error.message });
+      console.error('Error updating section:', error);
+    }
+  },
+
+  deleteSection: async (sectionId) => {
+    try {
+      const { sections, tasks } = await api.deleteSection(sectionId);
+      const sectionsWithTasks = sections.map(section => ({
+        ...section,
+        tasks: tasks
+          .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+          .sort((a, b) => a.order - b.order)
+      }));
+      
+      set({ 
+        sections: sectionsWithTasks.sort((a, b) => a.order - b.order),
+        error: null
+      });
+    } catch (error) {
+      set({ error: error.message });
+      console.error('Error deleting section:', error);
+    }
+  },
 
   addTask: async (sectionId, task) => {
     const section = get().sections.find(s => s.id === sectionId);
@@ -56,7 +101,7 @@ export const useBoardStore = create((set, get) => ({
     const newTask = {
       ...task,
       status: section.title.toLowerCase().replace(' ', ''),
-      order: maxOrder + 1
+      order: maxOrder + 1000
     };
 
     try {
@@ -86,25 +131,21 @@ export const useBoardStore = create((set, get) => ({
     if (!taskToMove) return;
 
     try {
-      // Get all tasks in the target section
       const targetSectionTasks = toSection.tasks.filter(t => (t._id || t.id) !== taskId);
       
-      // Calculate new orders for all affected tasks
       const updatedTasks = [...targetSectionTasks];
       updatedTasks.splice(toIndex, 0, taskToMove);
       const reorderedTasks = updatedTasks.map((task, index) => ({
         ...task,
-        order: index * 1000 // Use large intervals to allow for future insertions
+        order: index * 1000
       }));
 
-      // Update the moved task with new status and order
       const updatedTask = {
         ...taskToMove,
         status: toSection.title.toLowerCase().replace(' ', ''),
         order: reorderedTasks[toIndex].order
       };
 
-      // Optimistically update the UI
       set((state) => {
         const newSections = state.sections.map(section => {
           if (section.id === fromSectionId) {
@@ -124,17 +165,14 @@ export const useBoardStore = create((set, get) => ({
         return { sections: newSections, error: null };
       });
 
-      // Update the task on the server
       const serverUpdatedTasks = await api.updateTask(taskId, updatedTask);
 
-      // Update all tasks in the target section with their new orders
       for (const task of reorderedTasks) {
         if ((task._id || task.id) !== taskId) {
           await api.updateTask(task._id || task.id, { order: task.order });
         }
       }
 
-      // Final state update with server response
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
@@ -144,7 +182,6 @@ export const useBoardStore = create((set, get) => ({
         })),
       }));
     } catch (error) {
-      // Revert optimistic update on error
       get().initializeBoard();
       set({ error: error.message });
       console.error('Error moving task:', error);
@@ -153,7 +190,6 @@ export const useBoardStore = create((set, get) => ({
 
   deleteTask: async (sectionId, taskId) => {
     try {
-      // Optimistically remove the task
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
@@ -164,7 +200,6 @@ export const useBoardStore = create((set, get) => ({
 
       const updatedTasks = await api.deleteTask(taskId);
 
-      // Update with server response
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
@@ -174,7 +209,6 @@ export const useBoardStore = create((set, get) => ({
         })),
       }));
     } catch (error) {
-      // Revert optimistic update on error
       get().initializeBoard();
       set({ error: error.message });
       console.error('Error deleting task:', error);
@@ -183,7 +217,6 @@ export const useBoardStore = create((set, get) => ({
 
   updateTask: async (sectionId, taskId, updatedTask) => {
     try {
-      // Optimistically update the task
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
@@ -196,7 +229,6 @@ export const useBoardStore = create((set, get) => ({
 
       const updatedTasks = await api.updateTask(taskId, updatedTask);
 
-      // Update with server response
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
@@ -206,7 +238,6 @@ export const useBoardStore = create((set, get) => ({
         })),
       }));
     } catch (error) {
-      // Revert optimistic update on error
       get().initializeBoard();
       set({ error: error.message });
       console.error('Error updating task:', error);
