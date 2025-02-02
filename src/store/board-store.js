@@ -19,7 +19,9 @@ export const useBoardStore = create((set, get) => ({
       const tasks = await api.fetchTasks();
       const sections = get().sections.map(section => ({
         ...section,
-        tasks: tasks.filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+        tasks: tasks
+          .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+          .sort((a, b) => a.order - b.order)
       }));
       set({ sections, isLoading: false, error: null });
     } catch (error) {
@@ -48,9 +50,13 @@ export const useBoardStore = create((set, get) => ({
 
   addTask: async (sectionId, task) => {
     const section = get().sections.find(s => s.id === sectionId);
+    const tasks = section.tasks;
+    const maxOrder = tasks.length > 0 ? Math.max(...tasks.map(t => t.order)) : -1;
+    
     const newTask = {
       ...task,
       status: section.title.toLowerCase().replace(' ', ''),
+      order: maxOrder + 1
     };
 
     try {
@@ -58,9 +64,9 @@ export const useBoardStore = create((set, get) => ({
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
-          tasks: updatedTasks.filter(task => 
-            task.status === section.title.toLowerCase().replace(' ', '')
-          ),
+          tasks: updatedTasks
+            .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+            .sort((a, b) => a.order - b.order)
         })),
         error: null
       }));
@@ -69,7 +75,6 @@ export const useBoardStore = create((set, get) => ({
       console.error('Error adding task:', error);
     }
   },
-
 
   moveTask: async (fromSectionId, toSectionId, taskId, toIndex) => {
     const fromSection = get().sections.find((s) => s.id === fromSectionId);
@@ -81,6 +86,24 @@ export const useBoardStore = create((set, get) => ({
     if (!taskToMove) return;
 
     try {
+      // Get all tasks in the target section
+      const targetSectionTasks = toSection.tasks.filter(t => (t._id || t.id) !== taskId);
+      
+      // Calculate new orders for all affected tasks
+      const updatedTasks = [...targetSectionTasks];
+      updatedTasks.splice(toIndex, 0, taskToMove);
+      const reorderedTasks = updatedTasks.map((task, index) => ({
+        ...task,
+        order: index * 1000 // Use large intervals to allow for future insertions
+      }));
+
+      // Update the moved task with new status and order
+      const updatedTask = {
+        ...taskToMove,
+        status: toSection.title.toLowerCase().replace(' ', ''),
+        order: reorderedTasks[toIndex].order
+      };
+
       // Optimistically update the UI
       set((state) => {
         const newSections = state.sections.map(section => {
@@ -91,15 +114,9 @@ export const useBoardStore = create((set, get) => ({
             };
           }
           if (section.id === toSectionId) {
-            const newTasks = [...section.tasks];
-            const updatedTask = {
-              ...taskToMove,
-              status: toSection.title.toLowerCase().replace(' ', '')
-            };
-            newTasks.splice(toIndex, 0, updatedTask);
             return {
               ...section,
-              tasks: newTasks
+              tasks: reorderedTasks
             };
           }
           return section;
@@ -107,20 +124,23 @@ export const useBoardStore = create((set, get) => ({
         return { sections: newSections, error: null };
       });
 
-      // Make API call
-      const updatedTask = {
-        ...taskToMove,
-        status: toSection.title.toLowerCase().replace(' ', '')
-      };
-      const updatedTasks = await api.updateTask(taskId, updatedTask);
+      // Update the task on the server
+      const serverUpdatedTasks = await api.updateTask(taskId, updatedTask);
 
-      // Update with server response
+      // Update all tasks in the target section with their new orders
+      for (const task of reorderedTasks) {
+        if ((task._id || task.id) !== taskId) {
+          await api.updateTask(task._id || task.id, { order: task.order });
+        }
+      }
+
+      // Final state update with server response
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
-          tasks: updatedTasks.filter(task => 
-            task.status === section.title.toLowerCase().replace(' ', '')
-          ),
+          tasks: serverUpdatedTasks
+            .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+            .sort((a, b) => a.order - b.order)
         })),
       }));
     } catch (error) {
@@ -130,6 +150,7 @@ export const useBoardStore = create((set, get) => ({
       console.error('Error moving task:', error);
     }
   },
+
   deleteTask: async (sectionId, taskId) => {
     try {
       // Optimistically remove the task
@@ -147,9 +168,9 @@ export const useBoardStore = create((set, get) => ({
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
-          tasks: updatedTasks.filter(task => 
-            task.status === section.title.toLowerCase().replace(' ', '')
-          ),
+          tasks: updatedTasks
+            .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+            .sort((a, b) => a.order - b.order)
         })),
       }));
     } catch (error) {
@@ -168,7 +189,7 @@ export const useBoardStore = create((set, get) => ({
           ...section,
           tasks: section.tasks.map((task) => 
             task._id === taskId ? { ...task, ...updatedTask } : task
-          ),
+          ).sort((a, b) => a.order - b.order),
         })),
         error: null
       }));
@@ -179,9 +200,9 @@ export const useBoardStore = create((set, get) => ({
       set((state) => ({
         sections: state.sections.map((section) => ({
           ...section,
-          tasks: updatedTasks.filter(task => 
-            task.status === section.title.toLowerCase().replace(' ', '')
-          ),
+          tasks: updatedTasks
+            .filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+            .sort((a, b) => a.order - b.order)
         })),
       }));
     } catch (error) {
