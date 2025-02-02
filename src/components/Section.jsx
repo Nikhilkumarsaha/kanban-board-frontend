@@ -39,8 +39,9 @@ export function Section({ section, index }) {
             {...provided.dragHandleProps}
             className="bg-gray-100 rounded-lg p-4 space-y-4"
           >
+            {/* Section header */}
             <div className="flex items-center justify-between">
-              {isEditing ? (
+            {isEditing ? (
                 <form onSubmit={handleUpdateTitle} className="flex-1 flex items-center space-x-2">
                   <input
                     type="text"
@@ -117,23 +118,29 @@ export function Section({ section, index }) {
             </div>
 
             <Droppable droppableId={section.id} type="task">
-              {(provided) => (
+              {(provided, snapshot) => (
                 <div
                   ref={provided.innerRef}
                   {...provided.droppableProps}
-                  className="space-y-3"
+                  className={`space-y-3 min-h-[50px] ${
+                    snapshot.isDraggingOver ? 'bg-gray-50 rounded-lg' : ''
+                  }`}
                 >
                   {filteredTasks.map((task, index) => (
                     <Draggable
-                      key={task.id}
-                      draggableId={task.id}
+                      key={task._id || task.id}
+                      draggableId={task._id || task.id}
                       index={index}
                     >
-                      {(provided) => (
+                      {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
+                          style={{
+                            ...provided.draggableProps.style,
+                            opacity: snapshot.isDragging ? 0.8 : 1
+                          }}
                         >
                           <TaskCard task={task} sectionId={section.id} />
                         </div>
@@ -144,7 +151,6 @@ export function Section({ section, index }) {
                 </div>
               )}
             </Droppable>
-
             {filteredTasks.length === 0 && (
               <button
                 onClick={() => setShowAddModal(true)}
@@ -166,4 +172,3 @@ export function Section({ section, index }) {
     </Draggable>
   );
 }
-

@@ -10,6 +10,9 @@ export function TaskCard({ task, sectionId }) {
   const deleteTask = useBoardStore((state) => state.deleteTask);
   const updateTask = useBoardStore((state) => state.updateTask);
 
+  // Ensure we have a consistent ID for dragging
+  const taskId = task._id || task.id;
+
   return (
     <>
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 space-y-3">
@@ -37,7 +40,7 @@ export function TaskCard({ task, sectionId }) {
                 </button>
                 <button
                   onClick={() => {
-                    deleteTask(sectionId, task._id);
+                    deleteTask(sectionId, taskId);
                     setShowMenu(false);
                   }}
                   className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
@@ -73,10 +76,9 @@ export function TaskCard({ task, sectionId }) {
         <EditTaskModal
           task={task}
           onClose={() => setShowEditModal(false)}
-          onUpdate={(updatedTask) => updateTask(sectionId, task._id, updatedTask)}
+          onUpdate={(updatedTask) => updateTask(sectionId, taskId, updatedTask)}
         />
       )}
     </>
   );
 }
-

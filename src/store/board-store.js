@@ -70,33 +70,33 @@ export const useBoardStore = create((set, get) => ({
     }
   },
 
+
   moveTask: async (fromSectionId, toSectionId, taskId, toIndex) => {
     const fromSection = get().sections.find((s) => s.id === fromSectionId);
     const toSection = get().sections.find((s) => s.id === toSectionId);
-    const taskToMove = fromSection.tasks.find((t) => t._id === taskId);
+    
+    if (!fromSection || !toSection) return;
 
+    const taskToMove = fromSection.tasks.find((t) => (t._id || t.id) === taskId);
     if (!taskToMove) return;
 
     try {
-      const updatedTask = {
-        ...taskToMove,
-        status: toSection.title.toLowerCase().replace(' ', ''),
-      };
-
-      const updatedTasks = await api.updateTask(taskId, updatedTask);
-
       // Optimistically update the UI
       set((state) => {
         const newSections = state.sections.map(section => {
           if (section.id === fromSectionId) {
             return {
               ...section,
-              tasks: section.tasks.filter(t => t._id !== taskId)
+              tasks: section.tasks.filter(t => (t._id || t.id) !== taskId)
             };
           }
           if (section.id === toSectionId) {
             const newTasks = [...section.tasks];
-            newTasks.splice(toIndex, 0, { ...taskToMove, ...updatedTask });
+            const updatedTask = {
+              ...taskToMove,
+              status: toSection.title.toLowerCase().replace(' ', '')
+            };
+            newTasks.splice(toIndex, 0, updatedTask);
             return {
               ...section,
               tasks: newTasks
@@ -106,6 +106,13 @@ export const useBoardStore = create((set, get) => ({
         });
         return { sections: newSections, error: null };
       });
+
+      // Make API call
+      const updatedTask = {
+        ...taskToMove,
+        status: toSection.title.toLowerCase().replace(' ', '')
+      };
+      const updatedTasks = await api.updateTask(taskId, updatedTask);
 
       // Update with server response
       set((state) => ({
@@ -123,7 +130,6 @@ export const useBoardStore = create((set, get) => ({
       console.error('Error moving task:', error);
     }
   },
-
   deleteTask: async (sectionId, taskId) => {
     try {
       // Optimistically remove the task
@@ -188,4 +194,3 @@ export const useBoardStore = create((set, get) => ({
 
   setSearchQuery: (query) => set({ searchQuery: query }),
 }));
-
