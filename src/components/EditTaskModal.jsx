@@ -108,3 +108,4 @@ export function EditTaskModal({ task, onClose, onUpdate }) {
     </div>
   );
 }
+

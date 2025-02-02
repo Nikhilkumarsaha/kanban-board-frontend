@@ -166,3 +166,4 @@ export function Section({ section, index }) {
     </Draggable>
   );
 }
+

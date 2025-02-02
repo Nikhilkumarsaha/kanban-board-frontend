@@ -108,3 +108,4 @@ export function AddTaskModal({ onClose, onAdd }) {
     </div>
   );
 }
+

@@ -37,7 +37,7 @@ export function TaskCard({ task, sectionId }) {
                 </button>
                 <button
                   onClick={() => {
-                    deleteTask(sectionId, task.id);
+                    deleteTask(sectionId, task._id);
                     setShowMenu(false);
                   }}
                   className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full"
@@ -73,9 +73,10 @@ export function TaskCard({ task, sectionId }) {
         <EditTaskModal
           task={task}
           onClose={() => setShowEditModal(false)}
-          onUpdate={(updatedTask) => updateTask(sectionId, task.id, updatedTask)}
+          onUpdate={(updatedTask) => updateTask(sectionId, task._id, updatedTask)}
         />
       )}
     </>
   );
 }
+

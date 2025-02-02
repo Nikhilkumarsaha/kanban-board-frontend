@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import * as api from '../api/boardApi';
 
 const initialSections = [
   { id: '1', title: 'Todo', tasks: [] },
@@ -6,10 +7,27 @@ const initialSections = [
   { id: '3', title: 'Done', tasks: [] },
 ];
 
-export const useBoardStore = create((set) => ({
+export const useBoardStore = create((set, get) => ({
   sections: initialSections,
   searchQuery: '',
+  isLoading: false,
+  error: null,
   
+  initializeBoard: async () => {
+    set({ isLoading: true });
+    try {
+      const tasks = await api.fetchTasks();
+      const sections = get().sections.map(section => ({
+        ...section,
+        tasks: tasks.filter(task => task.status === section.title.toLowerCase().replace(' ', ''))
+      }));
+      set({ sections, isLoading: false, error: null });
+    } catch (error) {
+      set({ error: error.message, isLoading: false });
+      console.error('Error fetching tasks:', error);
+    }
+  },
+
   addSection: (title) => set((state) => ({
     sections: [...state.sections, {
       id: crypto.randomUUID(),
@@ -28,86 +46,146 @@ export const useBoardStore = create((set) => ({
     sections: state.sections.filter((section) => section.id !== sectionId),
   })),
 
-  addTask: (sectionId, task) => set((state) => ({
-    sections: state.sections.map((section) => {
-      if (section.id === sectionId) {
-        return {
-          ...section,
-          tasks: [...section.tasks, { ...task, id: crypto.randomUUID() }],
-        };
-      }
-      return section;
-    }),
-  })),
-
-  moveTask: (fromSectionId, toSectionId, taskId, toIndex) => set((state) => {
-    const fromSection = state.sections.find((s) => s.id === fromSectionId);
-    if (!fromSection) return state;
-
-    const taskToMove = fromSection.tasks.find((t) => t.id === taskId);
-    if (!taskToMove) return state;
-
-    const updatedFromSection = {
-      ...fromSection,
-      tasks: fromSection.tasks.filter((t) => t.id !== taskId),
+  addTask: async (sectionId, task) => {
+    const section = get().sections.find(s => s.id === sectionId);
+    const newTask = {
+      ...task,
+      status: section.title.toLowerCase().replace(' ', ''),
     };
 
-    if (fromSectionId === toSectionId) {
-      const reorderedTasks = [...updatedFromSection.tasks];
-      reorderedTasks.splice(toIndex, 0, taskToMove);
-      
-      return {
-        sections: state.sections.map((section) =>
-          section.id === fromSectionId
-            ? { ...section, tasks: reorderedTasks }
-            : section
-        ),
-      };
+    try {
+      const updatedTasks = await api.createTask(newTask);
+      set((state) => ({
+        sections: state.sections.map((section) => ({
+          ...section,
+          tasks: updatedTasks.filter(task => 
+            task.status === section.title.toLowerCase().replace(' ', '')
+          ),
+        })),
+        error: null
+      }));
+    } catch (error) {
+      set({ error: error.message });
+      console.error('Error adding task:', error);
     }
+  },
 
-    return {
-      sections: state.sections.map((section) => {
-        if (section.id === fromSectionId) {
-          return updatedFromSection;
-        }
-        if (section.id === toSectionId) {
-          const newTasks = [...section.tasks];
-          newTasks.splice(toIndex, 0, taskToMove);
-          return { ...section, tasks: newTasks };
-        }
-        return section;
-      }),
-    };
-  }),
+  moveTask: async (fromSectionId, toSectionId, taskId, toIndex) => {
+    const fromSection = get().sections.find((s) => s.id === fromSectionId);
+    const toSection = get().sections.find((s) => s.id === toSectionId);
+    const taskToMove = fromSection.tasks.find((t) => t._id === taskId);
 
-  deleteTask: (sectionId, taskId) => set((state) => ({
-    sections: state.sections.map((section) => {
-      if (section.id === sectionId) {
-        return {
+    if (!taskToMove) return;
+
+    try {
+      const updatedTask = {
+        ...taskToMove,
+        status: toSection.title.toLowerCase().replace(' ', ''),
+      };
+
+      const updatedTasks = await api.updateTask(taskId, updatedTask);
+
+      // Optimistically update the UI
+      set((state) => {
+        const newSections = state.sections.map(section => {
+          if (section.id === fromSectionId) {
+            return {
+              ...section,
+              tasks: section.tasks.filter(t => t._id !== taskId)
+            };
+          }
+          if (section.id === toSectionId) {
+            const newTasks = [...section.tasks];
+            newTasks.splice(toIndex, 0, { ...taskToMove, ...updatedTask });
+            return {
+              ...section,
+              tasks: newTasks
+            };
+          }
+          return section;
+        });
+        return { sections: newSections, error: null };
+      });
+
+      // Update with server response
+      set((state) => ({
+        sections: state.sections.map((section) => ({
           ...section,
-          tasks: section.tasks.filter((task) => task.id !== taskId),
-        };
-      }
-      return section;
-    }),
-  })),
+          tasks: updatedTasks.filter(task => 
+            task.status === section.title.toLowerCase().replace(' ', '')
+          ),
+        })),
+      }));
+    } catch (error) {
+      // Revert optimistic update on error
+      get().initializeBoard();
+      set({ error: error.message });
+      console.error('Error moving task:', error);
+    }
+  },
 
-  updateTask: (sectionId, taskId, updatedTask) => set((state) => ({
-    sections: state.sections.map((section) => {
-      if (section.id === sectionId) {
-        return {
+  deleteTask: async (sectionId, taskId) => {
+    try {
+      // Optimistically remove the task
+      set((state) => ({
+        sections: state.sections.map((section) => ({
           ...section,
-          tasks: section.tasks.map((task) => {
-            if (task.id === taskId) {
-              return { ...task, ...updatedTask };
-            }
-            return task;
-          }),
-        };
-      }
-      return section;
-    }),
-  })),
+          tasks: section.tasks.filter((task) => task._id !== taskId),
+        })),
+        error: null
+      }));
+
+      const updatedTasks = await api.deleteTask(taskId);
+
+      // Update with server response
+      set((state) => ({
+        sections: state.sections.map((section) => ({
+          ...section,
+          tasks: updatedTasks.filter(task => 
+            task.status === section.title.toLowerCase().replace(' ', '')
+          ),
+        })),
+      }));
+    } catch (error) {
+      // Revert optimistic update on error
+      get().initializeBoard();
+      set({ error: error.message });
+      console.error('Error deleting task:', error);
+    }
+  },
+
+  updateTask: async (sectionId, taskId, updatedTask) => {
+    try {
+      // Optimistically update the task
+      set((state) => ({
+        sections: state.sections.map((section) => ({
+          ...section,
+          tasks: section.tasks.map((task) => 
+            task._id === taskId ? { ...task, ...updatedTask } : task
+          ),
+        })),
+        error: null
+      }));
+
+      const updatedTasks = await api.updateTask(taskId, updatedTask);
+
+      // Update with server response
+      set((state) => ({
+        sections: state.sections.map((section) => ({
+          ...section,
+          tasks: updatedTasks.filter(task => 
+            task.status === section.title.toLowerCase().replace(' ', '')
+          ),
+        })),
+      }));
+    } catch (error) {
+      // Revert optimistic update on error
+      get().initializeBoard();
+      set({ error: error.message });
+      console.error('Error updating task:', error);
+    }
+  },
 
   setSearchQuery: (query) => set({ searchQuery: query }),
 }));
+

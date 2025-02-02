@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DragDropContext, Droppable } from '@hello-pangea/dnd';
 import { Plus, Search, Settings, Share2, X } from 'lucide-react';
 import { Section } from './components/Section';
@@ -9,7 +9,19 @@ function App() {
   const [isAddingSectionOpen, setIsAddingSectionOpen] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const { sections, addSection, moveTask, setSearchQuery } = useBoardStore();
+  const { 
+    sections, 
+    addSection, 
+    moveTask, 
+    setSearchQuery,
+    initializeBoard,
+    isLoading,
+    error 
+  } = useBoardStore();
+
+  useEffect(() => {
+    initializeBoard();
+  }, [initializeBoard]);
 
   const handleDragEnd = (result) => {
     const { source, destination, type } = result;
@@ -40,9 +52,26 @@ function App() {
     setIsAddingSectionOpen(false);
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-red-600">Error: {error}</div>
+      </div>
+    );
+  }
+
+  // Rest of your App component code remains the same
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
+     <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
@@ -140,5 +169,5 @@ function App() {
     </div>
   );
 }
-
 export default App;
+

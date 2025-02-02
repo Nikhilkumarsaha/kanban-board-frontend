@@ -94,3 +94,4 @@ export function SettingsModal({ onClose }) {
     </div>
   );
 }
+
