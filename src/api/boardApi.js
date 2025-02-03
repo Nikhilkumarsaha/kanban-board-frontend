@@ -1,5 +1,4 @@
-const API_BASE_URL = process.env.VITE_BACKEND_URI;
-
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URI
 export const fetchBoard = async () => {
   const response = await fetch(`${API_BASE_URL}/board`);
   if (!response.ok) {
