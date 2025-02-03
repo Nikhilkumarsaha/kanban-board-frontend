@@ -39,7 +39,6 @@ export function Section({ section, index }) {
             {...provided.dragHandleProps}
             className="bg-gray-100 rounded-lg p-4 space-y-4"
           >
-            {/* Section header */}
             <div className="flex items-center justify-between">
             {isEditing ? (
                 <form onSubmit={handleUpdateTitle} className="flex-1 flex items-center space-x-2">

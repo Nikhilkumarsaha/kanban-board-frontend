@@ -67,8 +67,6 @@ function App() {
       </div>
     );
   }
-
-  // Rest of your App component code remains the same
   return (
     <div className="min-h-screen bg-gray-50">
      <header className="bg-white border-b border-gray-200">

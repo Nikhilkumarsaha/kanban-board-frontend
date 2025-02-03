@@ -10,7 +10,6 @@ export function TaskCard({ task, sectionId }) {
   const deleteTask = useBoardStore((state) => state.deleteTask);
   const updateTask = useBoardStore((state) => state.updateTask);
 
-  // Ensure we have a consistent ID for dragging
   const taskId = task._id || task.id;
 
   return (
