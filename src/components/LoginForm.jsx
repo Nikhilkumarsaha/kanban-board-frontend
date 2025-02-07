@@ -19,6 +19,7 @@ export function LoginForm() {
     try {
       const { user, token } = await login({ email, password });
       setAuth(user, token);
+      localStorage.setItem('username', user.name)
       navigate('/board');
     } catch (err) {
       setError(err.message);

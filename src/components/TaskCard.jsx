@@ -52,21 +52,21 @@ export function TaskCard({ task, sectionId }) {
           </div>
         </div>
 
-        <p className="text-sm text-gray-600">{task.description}</p>
+        <p className="text-sm text-gray-600">{task?.description}</p>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <img
-              src={task.assignee.avatar}
-              alt={task.assignee.name}
+              src={task?.assignee?.avatar}
+              alt={task?.assignee?.name}
               className="w-6 h-6 rounded-full"
             />
-            <span className="text-sm text-gray-600">{task.assignee.name}</span>
+            <span className="text-sm text-gray-600">{task?.assignee?.name}</span>
           </div>
           
           <div className="flex items-center text-sm text-gray-500">
             <Calendar className="w-4 h-4 mr-1" />
-            {format(new Date(task.dueDate), 'MMM d')}
+            {format(new Date(task?.dueDate), 'MMM d')}
           </div>
         </div>
       </div>

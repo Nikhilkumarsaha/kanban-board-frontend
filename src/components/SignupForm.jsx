@@ -20,6 +20,7 @@ export function SignupForm() {
     try {
       const { user, token } = await signup({ name, email, password });
       setAuth(user, token);
+      localStorage.setItem('username', user.name)
       navigate('/board');
     } catch (err) {
       setError(err.message);

@@ -6,17 +6,21 @@ export function AddTaskModal({ onClose, onAdd }) {
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [assigneeName, setAssigneeName] = useState('');
-
+  const assigneeObject ={
+    id: crypto.randomUUID(),
+    name: assigneeName,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(assigneeName)}&background=random`,
+  }
   const handleSubmit = (e) => {
     e.preventDefault();
     onAdd({
       title,
       description,
       dueDate,
-      assignee: {
+      assignee:  assigneeObject.name ? assigneeObject : {
         id: crypto.randomUUID(),
-        name: assigneeName,
-        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(assigneeName)}&background=random`,
+        name: localStorage.getItem('username'),
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(localStorage.getItem('username'))}`,
       },
     });
     onClose();
@@ -84,7 +88,6 @@ export function AddTaskModal({ onClose, onAdd }) {
               value={assigneeName}
               onChange={(e) => setAssigneeName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              required
             />
           </div>
 
