@@ -1,26 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { DragDropContext, Droppable } from '@hello-pangea/dnd';
-import { Plus, Search, Settings, Share2, X } from 'lucide-react';
-import { Section } from './Section';
-import { SettingsModal } from './SettingsModal';
-import { useBoardStore } from '../store/board-store';
-import { useAuthStore } from '../store/auth-store';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { DragDropContext, Droppable } from "@hello-pangea/dnd";
+import { Plus, Search, Settings, Share2, X } from "lucide-react";
+import { Section } from "./Section";
+import { SettingsModal } from "./SettingsModal";
+import { useBoardStore } from "../store/board-store";
+import { useAuthStore } from "../store/auth-store";
+import { useNavigate } from "react-router-dom";
+import { Sun, Moon, CloudMoon, SunDim } from "lucide-react";
 
 export function Board() {
   const [isAddingSectionOpen, setIsAddingSectionOpen] = useState(false);
-  const [newSectionTitle, setNewSectionTitle] = useState('');
+  const [newSectionTitle, setNewSectionTitle] = useState("");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
-  const { 
-    sections, 
-    addSection, 
-    moveTask, 
+  const {
+    sections,
+    addSection,
+    moveTask,
     setSearchQuery,
     initializeBoard,
     isLoading,
-    error 
+    error,
   } = useBoardStore();
 
   useEffect(() => {
@@ -29,7 +30,7 @@ export function Board() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleDragEnd = (result) => {
@@ -37,7 +38,7 @@ export function Board() {
 
     if (!destination) return;
 
-    if (type === 'task') {
+    if (type === "task") {
       moveTask(
         source.droppableId,
         destination.droppableId,
@@ -51,15 +52,43 @@ export function Board() {
     e.preventDefault();
     if (newSectionTitle.trim()) {
       addSection(newSectionTitle.trim());
-      setNewSectionTitle('');
+      setNewSectionTitle("");
       setIsAddingSectionOpen(false);
     }
   };
 
   const handleCancel = () => {
-    setNewSectionTitle('');
+    setNewSectionTitle("");
     setIsAddingSectionOpen(false);
   };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+
+    if (hour >= 4 && hour < 12) {
+      return {
+        text: "Good Morning,",
+        icon: <SunDim className="w-5 h-5 inline-block text-yellow-500" />,
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        text: "Good Afternoon,",
+        icon: <Sun className="w-5 h-5 inline-block text-orange-500" />,
+      };
+    } else if (hour >= 17 && hour < 23) {
+      return {
+        text: "Good Evening,",
+        icon: <CloudMoon className="w-5 h-5 inline-block text-red-500" />,
+      };
+    } else {
+      return {
+        text: "Still Up?",
+        icon: <Moon className="w-5 h-5 inline-block text-blue-500" />,
+      };
+    }
+  };
+
+  const { text, icon } = getGreeting();
 
   if (isLoading) {
     return (
@@ -83,7 +112,12 @@ export function Board() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-xl font-semibold text-gray-900">Kanban Board</h1>
+              <h1 className="text-base text-gray-800 flex items-center gap-2">
+                {icon} {text}{" "}
+                <span className="font-semibold">
+                  {localStorage.getItem("username")?.split(" ")[0] || "Guest"}
+                </span>
+              </h1>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -96,12 +130,10 @@ export function Board() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-              <button 
-                className="p-2 text-gray-600 hover:text-gray-900"
-              >
+              <button className="p-2 text-gray-600 hover:text-gray-900">
                 <Share2 className="w-5 h-5" />
               </button>
-              <button 
+              <button
                 onClick={() => setShowSettingsModal(true)}
                 className="p-2 text-gray-600 hover:text-gray-900"
               >
