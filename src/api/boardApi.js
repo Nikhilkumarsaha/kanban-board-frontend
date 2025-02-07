@@ -1,6 +1,17 @@
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URI
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URI;
+
+const getHeaders = () => {
+  const token = JSON.parse(localStorage.getItem('auth-storage'))?.state?.token;
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`
+  };
+};
+
 export const fetchBoard = async () => {
-  const response = await fetch(`${API_BASE_URL}/board`);
+  const response = await fetch(`${API_BASE_URL}/board`, {
+    headers: getHeaders()
+  });
   if (!response.ok) {
     throw new Error('Failed to fetch board data');
   }
@@ -10,9 +21,7 @@ export const fetchBoard = async () => {
 export const createSection = async (section) => {
   const response = await fetch(`${API_BASE_URL}/sections`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(section),
   });
   if (!response.ok) {
@@ -24,9 +33,7 @@ export const createSection = async (section) => {
 export const updateSection = async (sectionId, updates) => {
   const response = await fetch(`${API_BASE_URL}/sections/${sectionId}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(updates),
   });
   if (!response.ok) {
@@ -38,6 +45,7 @@ export const updateSection = async (sectionId, updates) => {
 export const deleteSection = async (sectionId) => {
   const response = await fetch(`${API_BASE_URL}/sections/${sectionId}`, {
     method: 'DELETE',
+    headers: getHeaders()
   });
   if (!response.ok) {
     throw new Error('Failed to delete section');
@@ -48,9 +56,7 @@ export const deleteSection = async (sectionId) => {
 export const createTask = async (task) => {
   const response = await fetch(`${API_BASE_URL}/tasks`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(task),
   });
   if (!response.ok) {
@@ -62,9 +68,7 @@ export const createTask = async (task) => {
 export const updateTask = async (taskId, updates) => {
   const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getHeaders(),
     body: JSON.stringify(updates),
   });
   if (!response.ok) {
@@ -76,6 +80,7 @@ export const updateTask = async (taskId, updates) => {
 export const deleteTask = async (taskId) => {
   const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
     method: 'DELETE',
+    headers: getHeaders()
   });
   if (!response.ok) {
     throw new Error('Failed to delete task');
